@@ -1,76 +1,103 @@
 import { useState } from 'react';
-import { Wrench, Eye, EyeOff } from 'lucide-react';
-import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import { Leaf, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 
 export default function Login({ onLogin }) {
-  const [form, setForm] = useState({ email: 'admin@hardwarehub.com', password: '' });
+  const [form, setForm]     = useState({ email: 'admin@hardwarehub.com', password: '' });
   const [showPw, setShowPw] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const submit = async e => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 800));
-    // Mock auth — STEP 4-এ real API দিয়ে replace হবে
+    setError(''); setLoading(true);
+    await new Promise(r => setTimeout(r, 700));
     if (form.password === 'admin123') {
       onLogin({ name: 'Admin', email: form.email, role: 'ADMIN' });
     } else {
-      setError('ইমেইল বা পাসওয়ার্ড সঠিক নয়');
+      setError('পাসওয়ার্ড সঠিক নয়। চেষ্টা করুন: admin123');
     }
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-primary-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <Wrench size={32} className="text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-primary-950 via-primary-900 to-sidebar flex items-center justify-center p-4">
+      {/* Decorative blobs */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-primary-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-72 h-72 bg-primary-400/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl pointer-events-none" />
+
+      <div className="relative w-full max-w-[400px] space-y-6">
+        {/* Brand */}
+        <div className="text-center">
+          <div className="w-16 h-16 bg-primary-500 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-primary-900/50">
+            <Leaf size={30} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">HardwareHub</h1>
-          <p className="text-slate-400 text-sm mt-1">দোকান ম্যানেজমেন্ট সিস্টেম</p>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">HardwareHub</h1>
+          <p className="text-primary-300 text-[0.82rem] mt-1">হার্ডওয়্যার দোকান ম্যানেজমেন্ট সিস্টেম</p>
         </div>
 
-        {/* Form card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-800 text-center">লগইন করুন</h2>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <Input
-              label="ইমেইল"
-              type="email"
-              value={form.email}
-              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-              required
-            />
-            <div className="relative">
-              <Input
-                label="পাসওয়ার্ড"
-                type={showPw ? 'text' : 'password'}
-                value={form.password}
-                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw(v => !v)}
-                className="absolute right-3 bottom-2 text-gray-400 hover:text-gray-600"
-              >
-                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
+        {/* Card */}
+        <div className="bg-white rounded-3xl shadow-2xl p-7 space-y-5">
+          <div>
+            <h2 className="text-[1rem] font-bold text-gray-800">আপনার অ্যাকাউন্টে লগইন করুন</h2>
+            <p className="text-[0.75rem] text-gray-400 mt-0.5">Demo password: admin123</p>
+          </div>
+
+          <form onSubmit={submit} className="space-y-4">
+            {/* Email */}
+            <div>
+              <label className="form-label">ইমেইল অ্যাড্রেস</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400">
+                  <Mail size={15} />
+                </div>
+                <input
+                  type="email" value={form.email} required
+                  onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                  className="form-input pl-9"
+                  placeholder="admin@hardwarehub.com"
+                />
+              </div>
             </div>
-            {error && <p className="text-xs text-red-500 text-center">{error}</p>}
-            <Button type="submit" fullWidth size="lg" disabled={loading}>
-              {loading ? 'লগইন হচ্ছে...' : 'লগইন'}
-            </Button>
+
+            {/* Password */}
+            <div>
+              <label className="form-label">পাসওয়ার্ড</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400">
+                  <Lock size={15} />
+                </div>
+                <input
+                  type={showPw ? 'text' : 'password'} value={form.password} required
+                  onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                  className="form-input pl-9 pr-10"
+                  placeholder="পাসওয়ার্ড লিখুন"
+                />
+                <button type="button" onClick={() => setShowPw(v => !v)}
+                  className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600">
+                  {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-2.5 text-[0.78rem] text-red-600">
+                {error}
+              </div>
+            )}
+
+            <button type="submit" disabled={loading}
+              className="btn-lg btn-primary w-full mt-1 disabled:opacity-60">
+              {loading
+                ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />লগইন হচ্ছে...</>
+                : 'লগইন করুন'
+              }
+            </button>
           </form>
-          <p className="text-xs text-center text-gray-400 pt-1">
-            Demo: password = <code className="bg-gray-100 px-1 rounded">admin123</code>
-          </p>
         </div>
+
+        <p className="text-center text-[0.73rem] text-primary-400">
+          © 2026 HardwareHub · Md. Mosharrof Hossain
+        </p>
       </div>
     </div>
   );

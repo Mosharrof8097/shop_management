@@ -1,37 +1,23 @@
 export default function Card({ children, className = '' }) {
-  return (
-    <div className={`bg-white rounded-xl border border-gray-100 shadow-sm ${className}`}>
-      {children}
-    </div>
-  );
+  return <div className={`card ${className}`}>{children}</div>;
 }
 
-export function StatCard({ title, value, subtitle, icon, color = 'orange', trend }) {
-  const colors = {
-    orange: 'bg-orange-100 text-orange-600',
-    blue:   'bg-blue-100 text-blue-600',
-    red:    'bg-red-100 text-red-600',
-    green:  'bg-green-100 text-green-600',
-  };
+export function StatCard({ title, value, subtitle, icon, iconBg = 'bg-primary-100', iconColor = 'text-primary-600', trend }) {
   return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-sm text-gray-500 font-medium">{title}</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900">{value}</p>
-          {subtitle && <p className="mt-0.5 text-xs text-gray-400">{subtitle}</p>}
-          {trend && (
-            <p className={`mt-1 text-xs font-medium ${trend > 0 ? 'text-green-600' : 'text-red-500'}`}>
-              {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}% গত সপ্তাহ থেকে
-            </p>
-          )}
-        </div>
-        {icon && (
-          <div className={`p-3 rounded-xl ${colors[color]}`}>
-            {icon}
-          </div>
+    <div className="stat-card">
+      <div className={`stat-icon ${iconBg}`}>
+        <span className={iconColor}>{icon}</span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="stat-label truncate">{title}</p>
+        <p className="stat-value">{value}</p>
+        {subtitle && <p className="text-[0.72rem] text-gray-400 mt-0.5">{subtitle}</p>}
+        {trend !== undefined && (
+          <p className={`text-[0.7rem] font-semibold mt-1 ${trend >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+            {trend >= 0 ? '▲' : '▼'} {Math.abs(trend)}% গত সপ্তাহ থেকে
+          </p>
         )}
       </div>
-    </Card>
+    </div>
   );
 }

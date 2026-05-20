@@ -20,28 +20,47 @@ export default function ProductList() {
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.sku.toLowerCase().includes(search.toLowerCase())
   );
+  const f = k => e => setForm(prev => ({ ...prev, [k]: e.target.value }));
 
-  const openAdd = () => { setEditing(null); setForm(initForm); setShowModal(true); };
-  const openEdit = (p) => { setEditing(p); setForm({ ...p }); setShowModal(true); };
-
+  const openAdd  = () => { setEditing(null); setForm(initForm); setShowModal(true); };
+  const openEdit = p  => { setEditing(p); setForm({ ...p }); setShowModal(true); };
+  const handleDelete = id => {
+    if (!confirm('এই পণ্যটি মুছে ফেলবেন?')) return;
+    setProducts(prev => prev.filter(p => p.id !== id));
+  };
   const handleSave = () => {
+    if (!form.name) return;
     if (editing) {
-      setProducts(prev => prev.map(p => p.id === editing.id ? { ...p, ...form } : p));
+      setProducts(prev => prev.map(p => p.id === editing.id ? { ...p, ...form, purchase_price: +form.purchase_price, selling_price: +form.selling_price, current_stock: +form.current_stock, min_stock_alert: +form.min_stock_alert } : p));
     } else {
       setProducts(prev => [...prev, { ...form, id: Date.now(), purchase_price: +form.purchase_price, selling_price: +form.selling_price, current_stock: +form.current_stock, min_stock_alert: +form.min_stock_alert }]);
     }
     setShowModal(false);
   };
 
-  const handleDelete = (id) => {
-    if (confirm('এই পণ্যটি মুছে ফেলবেন?')) setProducts(prev => prev.filter(p => p.id !== id));
-  };
-
   return (
-    <div className="page-container space-y-4 pt-4">
-      <div className="flex items-center justify-between">
-        <h2 className="section-title mb-0">পণ্য ও স্টক</h2>
-        <Button icon={<Plus size={16} />} onClick={openAdd}>নতুন পণ্য</Button>
+    <div className="page">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="page-title">পণ্য ও স্টক</h1>
+          <p className="page-subtitle mt-0.5">মোট {products.length}টি পণ্য</p>
+        </div>
+        <Button icon={<Plus size={15} />} onClick={openAdd}>নতুন পণ্য</Button>
+      </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'মোট পণ্য', value: products.length, color: 'text-gray-800', bg: 'bg-white' },
+          { label: 'স্টক ঠিক আছে', value: products.filter(p => p.current_stock > p.min_stock_alert).length, color: 'text-primary-700', bg: 'bg-primary-50' },
+          { label: 'কম স্টক', value: products.filter(p => p.current_stock <= p.min_stock_alert).length, color: 'text-red-600', bg: 'bg-red-50' },
+        ].map(s => (
+          <div key={s.label} className={`${s.bg} rounded-2xl border border-gray-100 px-4 py-3 text-center`}>
+            <p className={`text-2xl font-extrabold ${s.color}`}>{s.value}</p>
+            <p className="text-[0.72rem] text-gray-500 mt-0.5 font-medium">{s.label}</p>
+          </div>
+        ))}
       </div>
 
       {/* Search */}
@@ -52,67 +71,53 @@ export default function ProductList() {
         prefix={<Search size={15} />}
       />
 
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="card p-3 text-center">
-          <p className="text-2xl font-bold text-gray-800">{products.length}</p>
-          <p className="text-xs text-gray-500 mt-0.5">মোট পণ্য</p>
-        </div>
-        <div className="card p-3 text-center">
-          <p className="text-2xl font-bold text-green-600">{products.filter(p => p.current_stock > p.min_stock_alert).length}</p>
-          <p className="text-xs text-gray-500 mt-0.5">স্টক ঠিক আছে</p>
-        </div>
-        <div className="card p-3 text-center">
-          <p className="text-2xl font-bold text-red-500">{products.filter(p => p.current_stock <= p.min_stock_alert).length}</p>
-          <p className="text-xs text-gray-500 mt-0.5">কম স্টক</p>
-        </div>
-      </div>
-
       {/* Table */}
-      <div className="card overflow-hidden p-0">
+      <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="tbl">
             <thead>
               <tr>
-                <th className="table-th">পণ্যের নাম</th>
-                <th className="table-th">SKU</th>
-                <th className="table-th hidden md:table-cell">ক্যাটাগরি</th>
-                <th className="table-th text-right">বিক্রয় মূল্য</th>
-                <th className="table-th text-center">স্টক</th>
-                <th className="table-th text-right">অ্যাকশন</th>
+                <th>পণ্যের নাম</th>
+                <th className="hidden sm:table-cell">SKU</th>
+                <th className="hidden lg:table-cell">ক্যাটাগরি</th>
+                <th className="text-right">ক্রয় মূল্য</th>
+                <th className="text-right">বিক্রয় মূল্য</th>
+                <th className="text-center">স্টক</th>
+                <th className="text-right">অ্যাকশন</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(p => (
-                <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="table-td">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
-                        <Package size={14} className="text-orange-600" />
+                <tr key={p.id}>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
+                        <Package size={14} className="text-primary-600" />
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-800">{p.name}</p>
-                        <p className="text-xs text-gray-400">{p.unit}</p>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-800 truncate max-w-[140px]">{p.name}</p>
+                        <p className="text-[0.7rem] text-gray-400">{p.unit}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="table-td text-gray-500 font-mono text-xs">{p.sku}</td>
-                  <td className="table-td hidden md:table-cell">
+                  <td className="hidden sm:table-cell font-mono text-[0.75rem] text-gray-500">{p.sku}</td>
+                  <td className="hidden lg:table-cell">
                     <Badge variant="blue">{p.category}</Badge>
                   </td>
-                  <td className="table-td text-right font-semibold">{formatCurrency(p.selling_price)}</td>
-                  <td className="table-td text-center">
+                  <td className="text-right text-gray-600">{formatCurrency(p.purchase_price)}</td>
+                  <td className="text-right font-bold text-gray-800">{formatCurrency(p.selling_price)}</td>
+                  <td className="text-center">
                     <Badge variant={p.current_stock <= p.min_stock_alert ? 'red' : 'green'}>
                       {p.current_stock} {p.unit}
                     </Badge>
                   </td>
-                  <td className="table-td text-right">
+                  <td className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600">
-                        <Edit2 size={15} />
+                      <button onClick={() => openEdit(p)} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-blue-50 text-blue-500 transition-colors">
+                        <Edit2 size={14} />
                       </button>
-                      <button onClick={() => handleDelete(p.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500">
-                        <Trash2 size={15} />
+                      <button onClick={() => handleDelete(p.id)} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-red-50 text-red-400 transition-colors">
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </td>
@@ -121,41 +126,40 @@ export default function ProductList() {
             </tbody>
           </table>
           {filtered.length === 0 && (
-            <div className="text-center py-10 text-gray-400">
-              <Package size={36} className="mx-auto mb-2 opacity-30" />
-              <p className="text-sm">কোনো পণ্য পাওয়া যায়নি</p>
+            <div className="empty-state">
+              <div className="empty-icon"><Package size={28} /></div>
+              <p className="text-[0.85rem] font-medium text-gray-500">কোনো পণ্য পাওয়া যায়নি</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Add/Edit Modal */}
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? 'পণ্য সম্পাদনা' : 'নতুন পণ্য যোগ'} size="md">
-        <div className="space-y-3">
-          <Input label="পণ্যের নাম" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+      {/* Modal */}
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? 'পণ্য সম্পাদনা' : 'নতুন পণ্য যোগ'}>
+        <div className="space-y-4">
+          <Input label="পণ্যের নাম" value={form.name} onChange={f('name')} required placeholder="যেমন: সিমেন্ট ৫০কেজি" />
           <div className="grid grid-cols-2 gap-3">
-            <Input label="SKU" value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} />
+            <Input label="SKU কোড" value={form.sku} onChange={f('sku')} placeholder="CEM-001" />
             <div>
               <label className="form-label">ক্যাটাগরি</label>
-              <select className="w-full border border-gray-300 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500/40"
-                value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+              <select className="form-select" value={form.category} onChange={f('category')}>
                 <option value="">নির্বাচন করুন</option>
                 {mockCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Input label="ক্রয় মূল্য" type="number" value={form.purchase_price} onChange={e => setForm(f => ({ ...f, purchase_price: e.target.value }))} prefix="৳" />
-            <Input label="বিক্রয় মূল্য" type="number" value={form.selling_price} onChange={e => setForm(f => ({ ...f, selling_price: e.target.value }))} prefix="৳" />
+            <Input label="ক্রয় মূল্য" type="number" value={form.purchase_price} onChange={f('purchase_price')} prefix={<span className="text-xs">৳</span>} />
+            <Input label="বিক্রয় মূল্য" type="number" value={form.selling_price} onChange={f('selling_price')} prefix={<span className="text-xs">৳</span>} />
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <Input label="বর্তমান স্টক" type="number" value={form.current_stock} onChange={e => setForm(f => ({ ...f, current_stock: e.target.value }))} />
-            <Input label="সর্বনিম্ন স্টক" type="number" value={form.min_stock_alert} onChange={e => setForm(f => ({ ...f, min_stock_alert: e.target.value }))} />
-            <Input label="একক" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} />
+            <Input label="বর্তমান স্টক" type="number" value={form.current_stock} onChange={f('current_stock')} />
+            <Input label="সর্বনিম্ন সতর্কতা" type="number" value={form.min_stock_alert} onChange={f('min_stock_alert')} />
+            <Input label="একক" value={form.unit} onChange={f('unit')} placeholder="পিস" />
           </div>
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-3 pt-1">
             <Button variant="secondary" fullWidth onClick={() => setShowModal(false)}>বাতিল</Button>
-            <Button fullWidth onClick={handleSave}>সংরক্ষণ</Button>
+            <Button fullWidth onClick={handleSave}>{editing ? 'আপডেট করুন' : 'যোগ করুন'}</Button>
           </div>
         </div>
       </Modal>

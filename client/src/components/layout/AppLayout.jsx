@@ -10,30 +10,30 @@ export default function AppLayout({ onLogout }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-[#f8faf8]">
       {/* Desktop sidebar */}
-      <Sidebar onLogout={onLogout} />
+      <Sidebar shopName={mockShop.name} onLogout={onLogout} />
 
-      {/* Mobile drawer sidebar */}
+      {/* Mobile sidebar drawer */}
       <MobileSidebar
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
         onLogout={onLogout}
+        shopName={mockShop.name}
       />
 
-      {/* Main content area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Main area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Navbar
           shopName={mockShop.name}
           userName="Admin"
           onMenuToggle={() => setMobileOpen(true)}
         />
-        <main className="flex-1 overflow-y-auto pb-20 lg:pb-6">
+        <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
           <Outlet />
         </main>
       </div>
 
-      {/* Mobile bottom navigation */}
       <MobileBottomNav />
     </div>
   );

@@ -56,17 +56,19 @@
   .form-select { @apply form-input appearance-none cursor-pointer; }
 
   /* Table */
-  .tbl { @apply w-full text-[0.82rem]; }
-  .tbl thead tr { @apply bg-gray-50/80; }
+  .tbl { @apply w-full text-[0.82rem] border-collapse; }
+  .tbl thead tr { @apply bg-gray-50; }
   .tbl th {
     @apply px-4 py-3 text-left text-[0.72rem] font-semibold text-gray-500
-    uppercase tracking-wider whitespace-nowrap;
+    uppercase tracking-wider whitespace-nowrap
+    border-b-2 border-gray-200 border-r border-gray-200 last:border-r-0;
   }
   .tbl td {
-    @apply px-4 py-3 text-gray-700 border-t border-gray-50
-    align-middle;
+    @apply px-4 py-3 text-gray-700 align-middle
+    border-b border-gray-100 border-r border-gray-100 last:border-r-0;
   }
   .tbl tbody tr { @apply hover:bg-green-50/30 transition-colors; }
+  .tbl tfoot td { @apply border-t-2 border-gray-200 border-r border-gray-200 last:border-r-0; }
 
   /* Stat card */
   .stat-card {

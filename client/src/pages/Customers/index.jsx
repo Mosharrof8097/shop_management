@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, Search, Phone, MapPin, CreditCard } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, Search, Phone, MapPin, CreditCard, FileText } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Input from '../../components/ui/Input';
@@ -70,7 +71,7 @@ export default function CustomerList() {
             )}
 
             {c.total_due > 0 && (
-              <div className="bg-red-50 rounded-xl px-3.5 py-2.5 flex items-center justify-between">
+              <div className="bg-red-50 rounded-xl px-3.5 py-2.5 flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <CreditCard size={14} className="text-red-400" />
                   <span className="text-[0.75rem] text-red-500 font-medium">মোট বাকি</span>
@@ -78,6 +79,14 @@ export default function CustomerList() {
                 <span className="font-extrabold text-red-600 text-[0.9rem]">{formatCurrency(c.total_due)}</span>
               </div>
             )}
+
+            {/* Ledger button */}
+            <Link to={`/customers/${c.id}/ledger`}>
+              <button className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-primary-200 text-primary-700 text-[0.78rem] font-semibold hover:bg-primary-50 transition-colors">
+                <FileText size={13} />
+                লেজার ও স্টেটমেন্ট দেখুন
+              </button>
+            </Link>
           </div>
         ))}
       </div>

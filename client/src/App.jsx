@@ -7,6 +7,7 @@ import ProductList from './pages/Products/index';
 import POS from './pages/Sales/POS';
 import SaleHistory from './pages/Sales/SaleHistory';
 import CustomerList from './pages/Customers/index';
+import CustomerLedger from './pages/Customers/CustomerLedger';
 import PurchaseList from './pages/Purchases/index';
 import Reports from './pages/Reports/index';
 import Settings from './pages/Settings/index';
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="sales" element={<POS />} />
           <Route path="sales/history" element={<SaleHistory />} />
           <Route path="customers" element={<CustomerList />} />
+          <Route path="customers/:id/ledger" element={<CustomerLedger />} />
           <Route path="purchases" element={<PurchaseList />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />

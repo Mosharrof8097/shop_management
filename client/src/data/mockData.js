@@ -93,3 +93,33 @@ export const mockSalesChart = [
   { date: 'শুক্র', sales: 61000 },
   { date: 'শনি', sales: 55000 },
 ];
+
+// Customer transactions — SALE = বিক্রয় (বাকি বাড়ে), PAYMENT = পরিশোধ (বাকি কমে)
+export const mockTransactions = [
+  // করিম সাহেব (id:1)
+  { id: 1,  customer_id: 1, date: '2026-01-05', type: 'SALE',    invoice: 'INV-2026-001', description: 'সিমেন্ট ১০ বস্তা, রড ৫ পিস', debit: 8700,  credit: 0,    balance: 8700  },
+  { id: 2,  customer_id: 1, date: '2026-01-10', type: 'PAYMENT', invoice: '',              description: 'নগদ পরিশোধ',                 debit: 0,     credit: 5000, balance: 3700  },
+  { id: 3,  customer_id: 1, date: '2026-02-03', type: 'SALE',    invoice: 'INV-2026-015', description: 'রড ১২mm ১০ পিস',             debit: 7200,  credit: 0,    balance: 10900 },
+  { id: 4,  customer_id: 1, date: '2026-02-15', type: 'PAYMENT', invoice: '',              description: 'বিকাশে পরিশোধ',              debit: 0,     credit: 3000, balance: 7900  },
+  { id: 5,  customer_id: 1, date: '2026-03-08', type: 'SALE',    invoice: 'INV-2026-031', description: 'সিমেন্ট ১৫ বস্তা, বালি',      debit: 9450,  credit: 0,    balance: 17350 },
+  { id: 6,  customer_id: 1, date: '2026-03-20', type: 'PAYMENT', invoice: '',              description: 'নগদ পরিশোধ',                 debit: 0,     credit: 8000, balance: 9350  },
+  { id: 7,  customer_id: 1, date: '2026-04-12', type: 'SALE',    invoice: 'INV-2026-048', description: 'রং সাদা ২ বালতি',             debit: 4200,  credit: 0,    balance: 13550 },
+  { id: 8,  customer_id: 1, date: '2026-04-25', type: 'PAYMENT', invoice: '',              description: 'নগদ পরিশোধ',                 debit: 0,     credit: 5000, balance: 8550  },
+  { id: 9,  customer_id: 1, date: '2026-05-10', type: 'SALE',    invoice: 'INV-2026-062', description: 'পেরেক ৫ কেজি, PVC পাইপ',     debit: 4200,  credit: 0,    balance: 12750 },
+  { id: 10, customer_id: 1, date: '2026-05-21', type: 'PAYMENT', invoice: '',              description: 'নগদ পরিশোধ',                 debit: 0,     credit: 2750, balance: 10000 },
+  { id: 11, customer_id: 1, date: '2026-05-21', type: 'SALE',    invoice: 'INV-2026-078', description: 'সিমেন্ট ১০ বস্তা, রড ৫ পিস', debit: 8700,  credit: 5000, balance: 13700 },
+
+  // নুর ইসলাম (id:3)
+  { id: 20, customer_id: 3, date: '2026-03-15', type: 'SALE',    invoice: 'INV-2026-022', description: 'সিমেন্ট ২০ বস্তা',            debit: 9600,  credit: 0,    balance: 9600  },
+  { id: 21, customer_id: 3, date: '2026-03-28', type: 'PAYMENT', invoice: '',              description: 'নগদ পরিশোধ',                 debit: 0,     credit: 5000, balance: 4600  },
+  { id: 22, customer_id: 3, date: '2026-04-18', type: 'SALE',    invoice: 'INV-2026-041', description: 'রড ১০mm ৮ পিস',              debit: 4720,  credit: 0,    balance: 9320  },
+  { id: 23, customer_id: 3, date: '2026-05-05', type: 'PAYMENT', invoice: '',              description: 'বিকাশে পরিশোধ',              debit: 0,     credit: 3000, balance: 6320  },
+  { id: 24, customer_id: 3, date: '2026-05-20', type: 'SALE',    invoice: 'INV-2026-003', description: 'রড ১০mm ৮ পিস, PVC পাইপ',   debit: 5500,  credit: 0,    balance: 11820 },
+  { id: 25, customer_id: 3, date: '2026-05-21', type: 'PAYMENT', invoice: '',              description: 'নগদ পরিশোধ',                 debit: 0,     credit: 3620, balance: 8200  },
+
+  // জাহাঙ্গীর আলম (id:4)
+  { id: 30, customer_id: 4, date: '2026-04-10', type: 'SALE',    invoice: 'INV-2026-035', description: 'রং সাদা ৩ বালতি',             debit: 6300,  credit: 0,    balance: 6300  },
+  { id: 31, customer_id: 4, date: '2026-04-20', type: 'PAYMENT', invoice: '',              description: 'নগদ পরিশোধ',                 debit: 0,     credit: 4000, balance: 2300  },
+  { id: 32, customer_id: 4, date: '2026-05-15', type: 'SALE',    invoice: 'INV-2026-059', description: 'সিমেন্ট ৫ বস্তা',             debit: 2400,  credit: 0,    balance: 4700  },
+  { id: 33, customer_id: 4, date: '2026-05-20', type: 'PAYMENT', invoice: '',              description: 'নগদ পরিশোধ',                 debit: 0,     credit: 1300, balance: 3400  },
+];

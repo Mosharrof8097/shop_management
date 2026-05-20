@@ -4,7 +4,7 @@ import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
-import { mockProducts, mockCategories } from '../../data/mockData';
+import { mockProducts } from '../../data/mockData';
 import { formatCurrency } from '../../utils/format';
 
 const initForm = { name: '', sku: '', category: '', purchase_price: '', selling_price: '', current_stock: '', min_stock_alert: '', unit: 'পিস' };
@@ -139,14 +139,8 @@ export default function ProductList() {
         <div className="space-y-4">
           <Input label="পণ্যের নাম" value={form.name} onChange={f('name')} required placeholder="যেমন: সিমেন্ট ৫০কেজি" />
           <div className="grid grid-cols-2 gap-3">
-            <Input label="SKU কোড" value={form.sku} onChange={f('sku')} placeholder="CEM-001" />
-            <div>
-              <label className="form-label">ক্যাটাগরি</label>
-              <select className="form-select" value={form.category} onChange={f('category')}>
-                <option value="">নির্বাচন করুন</option>
-                {mockCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-              </select>
-            </div>
+            <Input label="SKU কোড (ঐচ্ছিক)" value={form.sku} onChange={f('sku')} placeholder="যেমন: CEM-001" hint="পণ্যের unique code" />
+            <Input label="ক্যাটাগরি" value={form.category} onChange={f('category')} placeholder="যেমন: রড, সিমেন্ট, রং..." />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Input label="ক্রয় মূল্য" type="number" value={form.purchase_price} onChange={f('purchase_price')} prefix={<span className="text-xs">৳</span>} />

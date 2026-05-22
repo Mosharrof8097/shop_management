@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Leaf, Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { authService } from '../../services/auth';
 
-export default function Login({ onLogin }) {
-  const [form, setForm]     = useState({ email: 'admin@hardwarehub.com', password: '' });
+export default function Login({ onLogin, isSuperAdmin = false }) {
+  const navigate = useNavigate();
+  const [form, setForm]     = useState({ email: isSuperAdmin ? 'superadmin@hardwarehub.com' : 'admin@hardwarehub.com', password: '' });
   const [showPw, setShowPw] = useState(false);
   const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
@@ -10,13 +13,18 @@ export default function Login({ onLogin }) {
   const submit = async e => {
     e.preventDefault();
     setError(''); setLoading(true);
-    await new Promise(r => setTimeout(r, 700));
-    if (form.password === 'admin123') {
-      onLogin({ name: 'Admin', email: form.email, role: 'ADMIN' });
-    } else {
-      setError('পাসওয়ার্ড সঠিক নয়। চেষ্টা করুন: admin123');
+    try {
+      const res = await authService.login(form.email, form.password);
+      await onLogin(res.user, res.token);
+    } catch (err) {
+      if (err.response?.status === 403 && err.response?.data?.subscriptionExpired) {
+        navigate('/subscription/renew');
+        return;
+      }
+      setError(err.response?.data?.error || 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -32,7 +40,9 @@ export default function Login({ onLogin }) {
             <Leaf size={30} className="text-white" />
           </div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight">HardwareHub</h1>
-          <p className="text-primary-300 text-[0.82rem] mt-1">হার্ডওয়্যার দোকান ম্যানেজমেন্ট সিস্টেম</p>
+          <p className="text-primary-300 text-[0.82rem] mt-1">
+            {isSuperAdmin ? 'Super Admin Panel' : 'হার্ডওয়্যার দোকান ম্যানেজমেন্ট সিস্টেম'}
+          </p>
         </div>
 
         {/* Card */}
@@ -94,6 +104,15 @@ export default function Login({ onLogin }) {
             </button>
           </form>
         </div>
+
+        {!isSuperAdmin && (
+          <p className="text-center text-[0.73rem] text-primary-300">
+            নতুন দোকান?{' '}
+            <Link to="/register" className="text-primary-200 font-medium hover:text-white underline underline-offset-2">
+              ফ্রি ট্রায়াল শুরু করুন
+            </Link>
+          </p>
+        )}
 
         <p className="text-center text-[0.73rem] text-primary-400">
           © 2026 HardwareHub · Md. Mosharrof Hossain

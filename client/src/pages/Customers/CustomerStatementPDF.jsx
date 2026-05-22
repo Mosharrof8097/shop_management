@@ -1,7 +1,6 @@
-import { mockShop } from '../../data/mockData';
 import { formatCurrency } from '../../utils/format';
 
-export default function CustomerStatementPDF({ customer, transactions, summary, periodLabel }) {
+export default function CustomerStatementPDF({ customer, transactions, summary, periodLabel, shop }) {
   const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
 
   return (
@@ -13,9 +12,9 @@ export default function CustomerStatementPDF({ customer, transactions, summary, 
       <div style={{ background: 'linear-gradient(135deg, #166534, #15803d)', padding: '28px 32px', color: '#fff' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <p style={{ fontSize: 20, fontWeight: 800, margin: 0, letterSpacing: '-0.3px' }}>{mockShop.name}</p>
-            <p style={{ fontSize: 12, color: '#bbf7d0', marginTop: 3 }}>{mockShop.address}</p>
-            <p style={{ fontSize: 12, color: '#bbf7d0' }}>{mockShop.phone}</p>
+            <p style={{ fontSize: 20, fontWeight: 800, margin: 0, letterSpacing: '-0.3px' }}>{(shop?.name || 'HardwareHub')}</p>
+            <p style={{ fontSize: 12, color: '#bbf7d0', marginTop: 3 }}>{(shop?.address || '')}</p>
+            <p style={{ fontSize: 12, color: '#bbf7d0' }}>{(shop?.phone || '')}</p>
           </div>
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: 11, color: '#86efac', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>কাস্টমার স্টেটমেন্ট</p>
@@ -119,7 +118,7 @@ export default function CustomerStatementPDF({ customer, transactions, summary, 
           </p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: 11, color: '#9ca3af', margin: 0 }}>{mockShop.name}</p>
+          <p style={{ fontSize: 11, color: '#9ca3af', margin: 0 }}>{(shop?.name || 'HardwareHub')}</p>
           <p style={{ fontSize: 11, color: '#9ca3af' }}>HardwareHub v1.0</p>
         </div>
       </div>

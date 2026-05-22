@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Search, Plus, Minus, Trash2, CheckCircle, Package } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Badge from '../../components/ui/Badge';
-import { mockProducts, mockCustomers } from '../../data/mockData';
-import { formatCurrency, genInvoiceNo } from '../../utils/format';
+import { productsService } from '../../services/products';
+import { customersService } from '../../services/customers';
+import { salesService } from '../../services/sales';
+import { formatCurrency } from '../../utils/format';
 
 const PAY_TYPES = [
   { key: 'CASH',    label: 'নগদ' },
@@ -13,42 +16,88 @@ const PAY_TYPES = [
 ];
 
 export default function POS() {
-  const [search, setSearch]         = useState('');
-  const [cart, setCart]             = useState([]);
-  const [customer, setCustomer]     = useState('');
-  const [payType, setPayType]       = useState('CASH');
-  const [paidAmt, setPaidAmt]       = useState('');
-  const [discount, setDiscount]     = useState('');
-  const [done, setDone]             = useState(null);
+  const qc = useQueryClient();
+  const [search,     setSearch]    = useState('');
+  const [cart,       setCart]      = useState([]);
+  const [customerId, setCustomerId]= useState('');
+  const [payType,    setPayType]   = useState('CASH');
+  const [paidAmt,    setPaidAmt]   = useState('');
+  const [discount,   setDiscount]  = useState('');
+  const [done,       setDone]      = useState(null);
+  const [apiError,   setApiError]  = useState('');
 
-  const filtered = mockProducts.filter(p =>
-    search.length > 1
-      ? p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase())
-      : true
-  ).slice(0, 12);
+  const { data: productData } = useQuery({
+    queryKey: ['products', search],
+    queryFn: () => productsService.getAll({ search: search || undefined, limit: 100 }),
+  });
+
+  const { data: customerData } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => customersService.getAll({ limit: 200 }),
+  });
+
+  const products  = (productData?.data || []).slice(0, 12);
+  const customers = customerData?.data || [];
 
   const addToCart = p => {
-    if (p.current_stock === 0) return;
+    if (p.currentStock === 0) return;
     setCart(prev => {
       const ex = prev.find(i => i.id === p.id);
       return ex
-        ? prev.map(i => i.id === p.id ? { ...i, qty: Math.min(i.qty + 1, p.current_stock) } : i)
+        ? prev.map(i => i.id === p.id ? { ...i, qty: Math.min(i.qty + 1, p.currentStock) } : i)
         : [...prev, { ...p, qty: 1 }];
     });
   };
-  const setQty    = (id, qty)  => setCart(prev => prev.map(i => i.id === id ? { ...i, qty: Math.max(1, qty) } : i));
-  const removeItem = id        => setCart(prev => prev.filter(i => i.id !== id));
+  const setQty    = (id, qty) => setCart(prev => prev.map(i => i.id === id ? { ...i, qty: Math.max(1, qty) } : i));
+  const removeItem= id        => setCart(prev => prev.filter(i => i.id !== id));
 
-  const subtotal = cart.reduce((s, i) => s + i.selling_price * i.qty, 0);
+  const subtotal = cart.reduce((s, i) => s + Number(i.sellingPrice) * i.qty, 0);
   const disc     = Number(discount) || 0;
   const total    = Math.max(0, subtotal - disc);
   const paid     = payType === 'CASH' ? total : (Number(paidAmt) || 0);
   const due      = Math.max(0, total - paid);
 
+  const selectedCustomer = customers.find(c => c.id === customerId);
+
+  const saleMutation = useMutation({
+    mutationFn: salesService.create,
+    onSuccess: res => {
+      const sale = res.data;
+      setDone({
+        invoiceNo: sale.invoiceNo,
+        customer: selectedCustomer?.name || 'Walk-in',
+        items: cart,
+        subtotal, disc, total, paid, due,
+        payType,
+        date: new Date(sale.saleDate).toLocaleDateString('en-GB'),
+      });
+      setCart([]); setDiscount(''); setPaidAmt(''); setCustomerId(''); setSearch(''); setApiError('');
+      qc.invalidateQueries({ queryKey: ['products'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['sales-recent'] });
+      qc.invalidateQueries({ queryKey: ['customers'] }); // customer totalDue may have changed
+    },
+    onError: err => setApiError(err.response?.data?.error || 'বিক্রয় সম্পন্ন হয়নি। আবার চেষ্টা করুন।'),
+  });
+
   const completeSale = () => {
     if (!cart.length) return;
-    setDone({ invoice_no: genInvoiceNo(), customer: customer || 'সাধারণ কাস্টমার', items: cart, subtotal, disc, total, paid, due, payType, date: new Date().toLocaleDateString('en-GB') });
-    setCart([]); setDiscount(''); setPaidAmt(''); setCustomer(''); setSearch('');
+    setApiError('');
+    const payload = {
+      customerId:   customerId || null,
+      customerName: selectedCustomer?.name || null,
+      discount:     disc,
+      paidAmount:   paid,
+      paymentType:  payType,
+      paymentMethod:'CASH',
+      items: cart.map(i => ({
+        productId: i.id,
+        quantity:  i.qty,
+        unitPrice: Number(i.sellingPrice),
+        discount:  0,
+      })),
+    };
+    saleMutation.mutate(payload);
   };
 
   if (done) return (
@@ -59,13 +108,13 @@ export default function POS() {
         </div>
         <div>
           <h2 className="text-lg font-bold text-gray-800">বিক্রয় সম্পন্ন!</h2>
-          <p className="text-[0.8rem] text-gray-400 mt-1">{done.invoice_no} · {done.date}</p>
+          <p className="text-[0.8rem] text-gray-400 mt-1">{done.invoiceNo} · {done.date}</p>
         </div>
         <div className="bg-gray-50 rounded-2xl p-4 text-left space-y-2.5">
           {[
-            ['কাস্টমার', done.customer],
-            ['মোট মূল্য', formatCurrency(done.total)],
-            ['পরিশোধিত', formatCurrency(done.paid)],
+            ['কাস্টমার',   done.customer],
+            ['মোট মূল্য',  formatCurrency(done.total)],
+            ['পরিশোধিত',   formatCurrency(done.paid)],
           ].map(([k, v]) => (
             <div key={k} className="flex justify-between text-[0.83rem]">
               <span className="text-gray-500">{k}</span>
@@ -94,28 +143,20 @@ export default function POS() {
       <div className="flex flex-col xl:flex-row gap-5" style={{ minHeight: 'calc(100vh - 180px)' }}>
         {/* Left — product picker */}
         <div className="flex-1 flex flex-col gap-4 min-w-0">
-          <Input
-            placeholder="পণ্যের নাম বা SKU লিখুন..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            prefix={<Search size={15} />}
-          />
+          <Input placeholder="পণ্যের নাম বা SKU লিখুন..." value={search}
+            onChange={e => setSearch(e.target.value)} prefix={<Search size={15} />} />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {filtered.map(p => (
-              <button
-                key={p.id}
-                onClick={() => addToCart(p)}
-                disabled={p.current_stock === 0}
-                className="card p-3.5 text-left hover:border-primary-300 hover:shadow-card-hover focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
+            {products.map(p => (
+              <button key={p.id} onClick={() => addToCart(p)} disabled={p.currentStock === 0}
+                className="card p-3.5 text-left hover:border-primary-300 hover:shadow-card-hover focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                 <div className="w-8 h-8 bg-primary-50 rounded-xl flex items-center justify-center mb-2">
                   <Package size={14} className="text-primary-600" />
                 </div>
                 <p className="text-[0.78rem] font-semibold text-gray-800 line-clamp-2 leading-snug">{p.name}</p>
                 <p className="text-[0.68rem] text-gray-400 mt-0.5">{p.sku}</p>
-                <p className="text-[0.88rem] font-bold text-primary-600 mt-1.5">{formatCurrency(p.selling_price)}</p>
+                <p className="text-[0.88rem] font-bold text-primary-600 mt-1.5">{formatCurrency(Number(p.sellingPrice))}</p>
                 <div className="mt-1.5">
-                  <Badge variant={p.current_stock > 0 ? 'green' : 'red'}>স্টক: {p.current_stock}</Badge>
+                  <Badge variant={p.currentStock > 0 ? 'green' : 'red'}>স্টক: {p.currentStock}</Badge>
                 </div>
               </button>
             ))}
@@ -125,13 +166,11 @@ export default function POS() {
         {/* Right — cart */}
         <div className="xl:w-80 2xl:w-96 shrink-0">
           <div className="card overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-            {/* Cart header */}
             <div className="bg-primary-600 px-4 py-3 flex items-center justify-between">
               <p className="text-white font-bold text-[0.85rem]">কার্ট</p>
               <span className="bg-white/20 text-white text-[0.75rem] font-bold px-2 py-0.5 rounded-full">{cart.length}টি</span>
             </div>
 
-            {/* Items */}
             <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
               {cart.length === 0 && (
                 <div className="empty-state py-10">
@@ -143,7 +182,9 @@ export default function POS() {
                 <div key={item.id} className="px-4 py-3 flex items-center gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-[0.78rem] font-semibold text-gray-800 truncate">{item.name}</p>
-                    <p className="text-[0.7rem] text-gray-400">{formatCurrency(item.selling_price)} × {item.qty} = <span className="text-gray-700 font-bold">{formatCurrency(item.selling_price * item.qty)}</span></p>
+                    <p className="text-[0.7rem] text-gray-400">
+                      {formatCurrency(Number(item.sellingPrice))} × {item.qty} = <span className="text-gray-700 font-bold">{formatCurrency(Number(item.sellingPrice) * item.qty)}</span>
+                    </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button onClick={() => item.qty > 1 ? setQty(item.id, item.qty - 1) : removeItem(item.id)}
@@ -163,9 +204,7 @@ export default function POS() {
               ))}
             </div>
 
-            {/* Summary + payment */}
             <div className="border-t border-gray-100 px-4 py-4 space-y-3">
-              {/* Subtotal & discount */}
               <div className="space-y-1.5 text-[0.82rem]">
                 <div className="flex justify-between text-gray-500">
                   <span>সাবটোটাল</span><span className="font-semibold text-gray-700">{formatCurrency(subtotal)}</span>
@@ -182,13 +221,11 @@ export default function POS() {
                 </div>
               </div>
 
-              {/* Customer */}
-              <select className="form-select" value={customer} onChange={e => setCustomer(e.target.value)}>
+              <select className="form-select" value={customerId} onChange={e => setCustomerId(e.target.value)}>
                 <option value="">সাধারণ কাস্টমার (Walk-in)</option>
-                {mockCustomers.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                {customers.map(c => <option key={c.id} value={c.id}>{c.name} {Number(c.totalDue) > 0 ? `(বাকি: ৳${Number(c.totalDue).toLocaleString()})` : ''}</option>)}
               </select>
 
-              {/* Payment type */}
               <div className="grid grid-cols-3 gap-1.5">
                 {PAY_TYPES.map(({ key, label }) => (
                   <button key={key} onClick={() => setPayType(key)}
@@ -198,13 +235,11 @@ export default function POS() {
                 ))}
               </div>
 
-              {/* Partial amount input */}
               {payType === 'PARTIAL' && (
                 <Input type="number" placeholder="পরিশোধিত পরিমাণ" value={paidAmt}
                   onChange={e => setPaidAmt(e.target.value)} prefix={<span className="text-xs">৳</span>} />
               )}
 
-              {/* Due */}
               {due > 0 && (
                 <div className="bg-red-50 rounded-xl px-3 py-2 flex justify-between text-[0.82rem]">
                   <span className="text-red-500 font-medium">বাকি থাকবে</span>
@@ -212,8 +247,13 @@ export default function POS() {
                 </div>
               )}
 
-              <Button fullWidth size="lg" onClick={completeSale} disabled={!cart.length}>
-                বিক্রয় সম্পন্ন করুন
+              {apiError && (
+                <p className="text-[0.75rem] text-red-500 bg-red-50 rounded-xl px-3 py-2">{apiError}</p>
+              )}
+
+              <Button fullWidth size="lg" onClick={completeSale}
+                disabled={!cart.length || saleMutation.isPending}>
+                {saleMutation.isPending ? 'সংরক্ষণ হচ্ছে...' : 'বিক্রয় সম্পন্ন করুন'}
               </Button>
             </div>
           </div>

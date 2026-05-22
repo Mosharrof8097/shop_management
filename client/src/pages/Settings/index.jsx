@@ -1,18 +1,51 @@
-import { useState } from 'react';
-import { Store, Phone, Mail, MapPin, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Store, Phone, Mail, MapPin, CheckCircle, Loader2 } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
-import { mockShop } from '../../data/mockData';
+import { shopsService } from '../../services/shops';
+import { useAuth } from '../../hooks/useAuth';
+
+const PLAN_LABEL = { FREE: 'Free Trial', STARTER: 'Starter', PROFESSIONAL: 'Professional', ENTERPRISE: 'Enterprise' };
 
 export default function Settings() {
-  const [form, setForm] = useState({ ...mockShop });
-  const [saved, setSaved] = useState(false);
-  const f = k => e => setForm(p => ({ ...p, [k]: e.target.value }));
+  const { user, login } = useAuth();
+  const qc = useQueryClient();
 
-  const save = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-  };
+  const { data, isLoading } = useQuery({
+    queryKey: ['shop-me'],
+    queryFn: shopsService.getMe,
+  });
+
+  const [form, setForm] = useState({ name: '', address: '', phone: '', email: '' });
+
+  useEffect(() => {
+    const shop = data?.data;
+    if (shop) setForm({ name: shop.name || '', address: shop.address || '', phone: shop.phone || '', email: shop.email || '' });
+  }, [data]);
+
+  const f = key => e => setForm(p => ({ ...p, [key]: e.target.value }));
+
+  const { mutate: save, isPending, isSuccess, isError, error } = useMutation({
+    mutationFn: () => shopsService.updateMe(form),
+    onSuccess: res => {
+      qc.invalidateQueries({ queryKey: ['shop-me'] });
+      // Sync user state + localStorage so Navbar re-renders with new shop name
+      if (user && res.data) {
+        const token = localStorage.getItem('hw_token');
+        const updated = { ...user, shop: { ...user.shop, ...res.data } };
+        login(updated, token);
+      }
+    },
+  });
+
+  const shop = data?.data;
+
+  if (isLoading) return (
+    <div className="page flex items-center justify-center min-h-[40vh]">
+      <Loader2 size={24} className="animate-spin text-primary-500" />
+    </div>
+  );
 
   return (
     <div className="page max-w-2xl">
@@ -49,14 +82,21 @@ export default function Settings() {
           />
         </div>
 
-        {saved && (
+        {isSuccess && (
           <div className="flex items-center gap-2 bg-primary-50 border border-primary-100 rounded-xl px-4 py-2.5 text-[0.8rem] text-primary-700 font-medium">
             <CheckCircle size={16} />
             তথ্য সফলভাবে সংরক্ষিত হয়েছে
           </div>
         )}
-        <Button onClick={save} variant={saved ? 'success' : 'primary'}>
-          পরিবর্তন সংরক্ষণ করুন
+
+        {isError && (
+          <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-2.5 text-[0.78rem] text-red-600">
+            {error?.response?.data?.error || 'সংরক্ষণ ব্যর্থ হয়েছে।'}
+          </div>
+        )}
+
+        <Button onClick={() => save()} disabled={isPending} variant={isSuccess ? 'success' : 'primary'}>
+          {isPending ? <><Loader2 size={14} className="animate-spin" />সংরক্ষণ হচ্ছে...</> : 'পরিবর্তন সংরক্ষণ করুন'}
         </Button>
       </div>
 
@@ -65,11 +105,12 @@ export default function Settings() {
         <p className="font-bold text-gray-800 text-[0.93rem] mb-4 pb-3 border-b border-gray-100">সিস্টেম তথ্য</p>
         <div className="space-y-3">
           {[
-            ['সংস্করণ',   'v1.0.0 (Frontend MVP)'],
-            ['Frontend',  'React 18 + Vite + Tailwind CSS'],
-            ['Backend',   'STEP 2-এ implement হবে (Node.js + Express)'],
-            ['Database',  'STEP 2-এ connect হবে (PostgreSQL + Prisma)'],
-            ['মালিক',     'Md. Mosharrof Hossain'],
+            ['দোকানের নাম',    shop?.name || '—'],
+            ['Subscription',   PLAN_LABEL[shop?.subscriptionPlan] || '—'],
+            ['মেয়াদ শেষ',      shop?.subscriptionEndsAt ? new Date(shop.subscriptionEndsAt).toLocaleDateString('en-GB') : '—'],
+            ['Currency',       shop?.currency || 'BDT'],
+            ['সংস্করণ',        'v1.0.0'],
+            ['মালিক',          'Md. Mosharrof Hossain'],
           ].map(([k, v]) => (
             <div key={k} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0 gap-4">
               <span className="text-[0.8rem] text-gray-500 font-medium shrink-0">{k}</span>

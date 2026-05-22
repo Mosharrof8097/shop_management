@@ -1,27 +1,70 @@
 import { useState } from 'react';
-import { TrendingUp, TrendingDown, BarChart2, Download, Loader2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Download, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import SalesBarChart from '../../components/charts/SalesBarChart';
 import TopProductsChart from '../../components/charts/TopProductsChart';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import MonthlyReportPDF from './MonthlyReportPDF';
-import { mockTopProducts, mockSlowProducts, mockSalesChart } from '../../data/mockData';
+import { reportsService } from '../../services/reports';
 import { formatCurrency } from '../../utils/format';
 import { exportElementAsPDF } from '../../utils/pdf';
+import { useAuth } from '../../hooks/useAuth';
 
 const TABS    = ['বিক্রির রিপোর্ট', 'পণ্য বিশ্লেষণ', 'মাসিক রিপোর্ট'];
-const FILTERS = ['এই সপ্তাহ', 'এই মাস', 'এই বছর'];
+const FILTERS = [
+  { label: 'এই সপ্তাহ', days: 7 },
+  { label: 'এই মাস',    days: 30 },
+  { label: 'এই বছর',   days: 365 },
+];
+
+function dateRange(days) {
+  const to   = new Date().toISOString().split('T')[0];
+  const from = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
+  return { from, to };
+}
 
 export default function Reports() {
-  const [tab, setTab]         = useState(0);
-  const [filter, setFilter]   = useState(0);
+  const { user } = useAuth();
+  const [tab,       setTab]       = useState(0);
+  const [filter,    setFilter]    = useState(1);
   const [exporting, setExporting] = useState(false);
+
+  const now   = new Date();
+  const month = now.getMonth() + 1;
+  const year  = now.getFullYear();
+  const range = dateRange(FILTERS[filter].days);
+
+  const { data: salesData, isLoading: salesLoading } = useQuery({
+    queryKey: ['report-sales', filter],
+    queryFn: () => reportsService.sales({ ...range, groupBy: filter === 2 ? 'month' : 'day' }),
+  });
+
+  const { data: topData } = useQuery({
+    queryKey: ['report-top', filter],
+    queryFn: () => reportsService.topProducts({ ...range, limit: 10 }),
+  });
+
+  const { data: slowData } = useQuery({
+    queryKey: ['report-slow', filter],
+    queryFn: () => reportsService.slowProducts({ ...range, limit: 10 }),
+  });
+
+  const { data: plData } = useQuery({
+    queryKey: ['report-pl', month, year],
+    queryFn: () => reportsService.profitLoss({ month, year }),
+  });
+
+  const salesTotals  = salesData?.totals  || {};
+  const chartData    = (salesData?.chart  || []).map(c => ({ name: c.period.slice(-5), sales: c.total }));
+  const topProducts  = topData?.data      || [];
+  const slowProducts = slowData?.data     || [];
+  const pl           = plData?.data       || {};
 
   const handleExportPDF = async () => {
     setExporting(true);
-    await new Promise(r => setTimeout(r, 100)); // let render settle
-    const month = new Date().toLocaleDateString('bn-BD', { month: 'long', year: 'numeric' });
-    await exportElementAsPDF('monthly-report-content', `মাসিক-রিপোর্ট-${new Date().toISOString().slice(0,7)}.pdf`);
+    await new Promise(r => setTimeout(r, 100));
+    await exportElementAsPDF('monthly-report-content', `মাসিক-রিপোর্ট-${year}-${String(month).padStart(2,'0')}.pdf`);
     setExporting(false);
   };
 
@@ -35,9 +78,7 @@ export default function Reports() {
           <button key={i} onClick={() => setTab(i)}
             className={`px-4 py-2 rounded-xl text-[0.82rem] font-semibold transition-all ${
               tab === i ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}>
-            {t}
-          </button>
+            }`}>{t}</button>
         ))}
       </div>
 
@@ -48,122 +89,148 @@ export default function Reports() {
             {FILTERS.map((f, i) => (
               <button key={i} onClick={() => setFilter(i)}
                 className={`px-4 py-1.5 rounded-xl text-[0.78rem] font-semibold transition-colors ${
-                  filter === i
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-white text-gray-500 border border-gray-200 hover:border-primary-300 hover:text-primary-600'
-                }`}>{f}</button>
+                  filter === i ? 'bg-primary-600 text-white' : 'bg-white text-gray-500 border border-gray-200 hover:border-primary-300 hover:text-primary-600'
+                }`}>{f.label}</button>
             ))}
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { label: 'মোট বিক্রি',       value: '৳ ৩,৩১,০০০', color: 'text-primary-700', bg: 'bg-primary-50' },
-              { label: 'মোট লেনদেন',      value: '৮৪টি',        color: 'text-blue-700',    bg: 'bg-blue-50'   },
-              { label: 'গড় প্রতি বিক্রি',  value: '৳ ৩,৯৪০',   color: 'text-purple-700',  bg: 'bg-purple-50' },
-              { label: 'সর্বোচ্চ দিনে',    value: '৳ ৬১,০০০',  color: 'text-amber-700',   bg: 'bg-amber-50'  },
+              { label: 'মোট বিক্রি',    value: formatCurrency(salesTotals.totalSales   || 0), color: 'text-primary-700', bg: 'bg-primary-50' },
+              { label: 'মোট লেনদেন',   value: `${salesTotals.count || 0}টি`,               color: 'text-blue-700',    bg: 'bg-blue-50'    },
+              { label: 'মোট বাকি',      value: formatCurrency(salesTotals.totalDue     || 0), color: 'text-red-700',     bg: 'bg-red-50'     },
+              { label: 'মোট ছাড়',       value: formatCurrency(salesTotals.totalDiscount|| 0), color: 'text-amber-700',   bg: 'bg-amber-50'   },
             ].map(s => (
-              <div key={s.label} className={`${s.bg} rounded-2xl border border-gray-100 p-4`}>
+              <div key={s.label} className={`${s.bg} rounded-2xl border border-gray-100 px-4 py-3`}>
                 <p className={`text-xl font-extrabold ${s.color}`}>{s.value}</p>
-                <p className="text-[0.73rem] text-gray-500 mt-1 font-medium">{s.label}</p>
+                <p className="text-[0.72rem] text-gray-500 mt-0.5 font-medium">{s.label}</p>
               </div>
             ))}
           </div>
 
           <div className="card p-5">
-            <p className="card-title mb-5">প্রতিদিনের বিক্রি</p>
-            <SalesBarChart data={mockSalesChart} />
+            <p className="card-title mb-4">বিক্রির চার্ট</p>
+            {salesLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="w-6 h-6 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+              </div>
+            ) : <SalesBarChart data={chartData} />}
           </div>
         </div>
       )}
 
       {/* ── Tab 1: Product Analytics ── */}
       {tab === 1 && (
-        <div className="grid lg:grid-cols-2 gap-5">
-          {/* Top sellers */}
-          <div className="card overflow-hidden">
-            <div className="card-header bg-primary-50/50">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary-100 rounded-xl flex items-center justify-center">
-                  <TrendingUp size={15} className="text-primary-600" />
-                </div>
-                <div>
-                  <p className="card-title">সেরা বিক্রেতা পণ্য</p>
-                  <p className="text-[0.7rem] text-gray-400">এই মাসে সবচেয়ে বেশি বিক্রি</p>
-                </div>
+        <div className="space-y-5">
+          <div className="grid lg:grid-cols-2 gap-5">
+            {/* Top selling */}
+            <div className="card overflow-hidden">
+              <div className="card-header">
+                <p className="card-title">সেরা বিক্রির পণ্য</p>
+                <Badge variant="green">Top 10</Badge>
               </div>
-            </div>
-            <div className="p-5">
-              <TopProductsChart data={mockTopProducts} />
-              <div className="mt-4 space-y-2.5">
-                {mockTopProducts.map((p, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[0.68rem] font-bold shrink-0 ${
-                      i === 0 ? 'bg-primary-600 text-white' : i === 1 ? 'bg-primary-400 text-white' : 'bg-primary-100 text-primary-700'
-                    }`}>{i + 1}</div>
-                    <span className="flex-1 text-[0.8rem] text-gray-700 truncate">{p.name}</span>
-                    <span className="text-[0.8rem] font-bold text-gray-800 shrink-0">{p.total_sold} পিস</span>
-                    <span className="text-[0.73rem] text-gray-400 shrink-0 hidden sm:block">{formatCurrency(p.revenue)}</span>
+              <div className="divide-y divide-gray-50">
+                {topProducts.map((p, i) => (
+                  <div key={p.productId} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/60">
+                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-[0.72rem] font-bold shrink-0 ${
+                      i === 0 ? 'bg-yellow-100 text-yellow-700' : i === 1 ? 'bg-gray-100 text-gray-600' : i === 2 ? 'bg-amber-100 text-amber-700' : 'bg-gray-50 text-gray-500'
+                    }`}>{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[0.83rem] font-semibold text-gray-800 truncate">{p.productName}</p>
+                      <p className="text-[0.7rem] text-gray-400">{p.productSku}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[0.83rem] font-bold text-primary-700">{formatCurrency(Number(p.totalRevenue))}</p>
+                      <p className="text-[0.7rem] text-gray-400">{p.totalSold} বিক্রি</p>
+                    </div>
                   </div>
                 ))}
+                {!topProducts.length && <div className="empty-state"><p className="text-gray-400 text-[0.82rem]">কোনো তথ্য নেই</p></div>}
+              </div>
+            </div>
+
+            {/* Slow movers */}
+            <div className="card overflow-hidden">
+              <div className="card-header">
+                <p className="card-title">কম বিক্রির পণ্য</p>
+                <Badge variant="yellow">মনোযোগ দিন</Badge>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {slowProducts.map(p => (
+                  <div key={p.id} className="flex items-center gap-3 px-5 py-3 hover:bg-amber-50/30">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[0.83rem] font-semibold text-gray-800 truncate">{p.name}</p>
+                      <p className="text-[0.7rem] text-gray-400">স্টক: {p.currentStock} {p.unit}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <Badge variant="yellow">{p.totalSold} বিক্রি</Badge>
+                    </div>
+                  </div>
+                ))}
+                {!slowProducts.length && <div className="empty-state"><p className="text-gray-400 text-[0.82rem]">কোনো তথ্য নেই</p></div>}
               </div>
             </div>
           </div>
 
-          {/* Slow movers */}
-          <div className="card overflow-hidden">
-            <div className="card-header bg-red-50/50">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-red-100 rounded-xl flex items-center justify-center">
-                  <TrendingDown size={15} className="text-red-500" />
-                </div>
-                <div>
-                  <p className="card-title">কম বিক্রির পণ্য</p>
-                  <p className="text-[0.7rem] text-gray-400">এই মাসে সবচেয়ে কম চলছে</p>
-                </div>
-              </div>
-            </div>
-            <div className="p-5 space-y-3">
-              {mockSlowProducts.map((p, i) => (
-                <div key={i} className="flex items-center justify-between p-3.5 bg-red-50/60 rounded-2xl border border-red-100">
-                  <div>
-                    <p className="text-[0.83rem] font-semibold text-gray-800">{p.name}</p>
-                    <p className="text-[0.72rem] text-gray-400 mt-0.5">স্টকে: {p.current_stock} পিস</p>
-                  </div>
-                  <div className="text-right">
-                    <Badge variant="red">{p.total_sold} বিক্রি</Badge>
-                    <p className="text-[0.68rem] text-gray-400 mt-1">এই মাসে</p>
-                  </div>
-                </div>
-              ))}
-              <div className="flex items-start gap-2 bg-amber-50 rounded-2xl p-3.5 border border-amber-100">
-                <span className="text-amber-500 shrink-0">💡</span>
-                <p className="text-[0.75rem] text-amber-700 leading-relaxed">এই পণ্যগুলোতে নতুন স্টক না কিনে বিদ্যমান স্টক শেষ করুন।</p>
-              </div>
-            </div>
+          {/* Chart */}
+          <div className="card p-5">
+            <p className="card-title mb-4">সেরা পণ্য চার্ট</p>
+            <TopProductsChart data={topProducts.slice(0, 5).map(p => ({ name: p.productName, sales: Number(p.totalRevenue) }))} />
           </div>
         </div>
       )}
 
-      {/* ── Tab 2: Monthly Report + PDF ── */}
+      {/* ── Tab 2: Monthly Report ── */}
       {tab === 2 && (
         <div className="space-y-5">
-          {/* Action bar */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[0.88rem] font-bold text-gray-800">মাসিক রিপোর্ট — মে ২০২৬</p>
-              <p className="text-[0.73rem] text-gray-400 mt-0.5">সম্পূর্ণ মাসের আয়-ব্যয়ের হিসাব</p>
+              <p className="font-bold text-gray-800">{now.toLocaleDateString('bn-BD', { month: 'long', year: 'numeric' })} রিপোর্ট</p>
+              <p className="text-[0.75rem] text-gray-400 mt-0.5">আয়, ব্যয় ও মুনাফার সারসংক্ষেপ</p>
             </div>
-            <Button
-              icon={exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
-              onClick={handleExportPDF}
-              disabled={exporting}
-            >
-              {exporting ? 'তৈরি হচ্ছে...' : 'PDF সেভ করুন'}
+            <Button icon={exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              onClick={handleExportPDF} disabled={exporting}>
+              {exporting ? 'তৈরি হচ্ছে...' : 'PDF ডাউনলোড'}
             </Button>
           </div>
 
-          {/* The printable report — this gets captured as PDF */}
-          <MonthlyReportPDF />
+          {/* P&L Summary */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { label: 'মোট বিক্রি',     value: formatCurrency(pl.income?.totalSales    || 0), icon: <TrendingUp size={18}/>,   color: 'text-primary-700', bg: 'bg-primary-50' },
+              { label: 'ক্রয় খরচ',      value: formatCurrency(pl.costs?.totalPurchases || 0), icon: <TrendingDown size={18}/>, color: 'text-blue-700',    bg: 'bg-blue-50'    },
+              { label: 'মোট খরচ',        value: formatCurrency(pl.costs?.totalExpenses  || 0), icon: <TrendingDown size={18}/>, color: 'text-red-700',     bg: 'bg-red-50'     },
+              { label: 'নিট মুনাফা',     value: formatCurrency(pl.profit?.netProfit     || 0), icon: <TrendingUp size={18}/>,   color: (pl.profit?.netProfit || 0) >= 0 ? 'text-primary-700' : 'text-red-700', bg: (pl.profit?.netProfit || 0) >= 0 ? 'bg-primary-50' : 'bg-red-50' },
+            ].map(s => (
+              <div key={s.label} className={`${s.bg} rounded-2xl border border-gray-100 px-4 py-3 flex items-center gap-3`}>
+                <span className={s.color}>{s.icon}</span>
+                <div>
+                  <p className={`text-xl font-extrabold ${s.color}`}>{s.value}</p>
+                  <p className="text-[0.72rem] text-gray-500 font-medium">{s.label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Expense breakdown */}
+          {pl.costs?.expensesByCategory?.length > 0 && (
+            <div className="card p-5">
+              <p className="card-title mb-4">খরচের বিভাগ</p>
+              <div className="space-y-2">
+                {pl.costs.expensesByCategory.map(e => (
+                  <div key={e.category} className="flex items-center justify-between text-[0.83rem]">
+                    <span className="text-gray-600">{e.category}</span>
+                    <span className="font-bold text-gray-800">{formatCurrency(Number(e.amount))}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Hidden PDF template */}
+          <div className="sr-only">
+            <MonthlyReportPDF shop={user?.shop} pl={pl} topProducts={topProducts} month={month} year={year} />
+          </div>
         </div>
       )}
     </div>

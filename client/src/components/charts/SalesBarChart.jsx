@@ -15,7 +15,7 @@ export default function SalesBarChart({ data = [] }) {
     <ResponsiveContainer width="100%" height={200}>
       <BarChart data={data} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#f0fdf4" vertical={false} />
-        <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+        <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
         <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false}
           tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
         <Tooltip content={<Tip />} cursor={{ fill: '#f0fdf4', radius: 8 }} />

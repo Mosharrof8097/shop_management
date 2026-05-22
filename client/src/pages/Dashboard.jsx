@@ -1,9 +1,8 @@
-import { TrendingUp, AlertTriangle, Users, DollarSign, ShoppingCart, ArrowRight, RefreshCw } from 'lucide-react';
+import { TrendingUp, AlertTriangle, Users, DollarSign, ShoppingCart, ArrowRight, RefreshCw, Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { StatCard } from '../components/ui/Card';
 import SalesBarChart from '../components/charts/SalesBarChart';
-import TopProductsChart from '../components/charts/TopProductsChart';
 import Badge from '../components/ui/Badge';
 import { reportsService } from '../services/reports';
 import { formatCurrency } from '../utils/format';
@@ -132,17 +131,85 @@ export default function Dashboard() {
               বিস্তারিত <ArrowRight size={13} />
             </Link>
           </div>
-          <SalesBarChart data={chartData.length ? chartData : []} />
+          {chartData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-[200px] gap-2">
+              <div className="w-10 h-10 bg-gray-100 rounded-2xl flex items-center justify-center">
+                <TrendingUp size={18} className="text-gray-400" />
+              </div>
+              <p className="text-[0.78rem] text-gray-400">এখনো কোনো বিক্রয় নেই</p>
+            </div>
+          ) : (
+            <SalesBarChart data={chartData} />
+          )}
         </div>
 
         <div className="card p-5 lg:col-span-2">
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <p className="card-title">সেরা পণ্য</p>
               <p className="text-[0.73rem] text-gray-400 mt-0.5">এই মাসে সবচেয়ে বেশি বিক্রি</p>
             </div>
+            <Link to="/reports" className="text-[0.75rem] text-primary-600 font-semibold flex items-center gap-1 hover:gap-2 transition-all">
+              রিপোর্ট <ArrowRight size={13} />
+            </Link>
           </div>
-          <TopProductsChart data={topProducts.map(p => ({ name: p.productName, sales: Number(p.totalRevenue) }))} />
+
+          {topProducts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-2">
+              <div className="w-10 h-10 bg-gray-100 rounded-2xl flex items-center justify-center">
+                <Package size={18} className="text-gray-400" />
+              </div>
+              <p className="text-[0.78rem] text-gray-400">এই মাসে কোনো বিক্রয় নেই</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {topProducts.slice(0, 5).map((p, i) => {
+                const maxRev = Number(topProducts[0]?.totalRevenue || 1);
+                const pct    = Math.max(8, Math.round((Number(p.totalRevenue) / maxRev) * 100));
+                const rankColor = [
+                  'bg-amber-400',
+                  'bg-gray-400',
+                  'bg-orange-400',
+                  'bg-primary-400',
+                  'bg-primary-300',
+                ][i];
+                const rankLabel = ['১', '২', '৩', '৪', '৫'][i];
+                return (
+                  <div key={p.productId || i} className="flex items-center gap-3">
+                    {/* Rank badge */}
+                    <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[0.65rem] font-extrabold text-white shrink-0 ${rankColor}`}>
+                      {rankLabel}
+                    </span>
+
+                    {/* Name + bar */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="text-[0.78rem] font-semibold text-gray-800 truncate leading-tight">
+                          {p.productName}
+                        </p>
+                        <p className="text-[0.72rem] font-bold text-gray-700 shrink-0">
+                          {formatCurrency(Number(p.totalRevenue))}
+                        </p>
+                      </div>
+                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            i === 0 ? 'bg-amber-400' : i === 1 ? 'bg-gray-400' : i === 2 ? 'bg-orange-400' : 'bg-primary-400'
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Qty */}
+                    <span className="text-[0.68rem] text-gray-400 shrink-0 w-10 text-right">
+                      {Number(p.totalSold)}পিস
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
